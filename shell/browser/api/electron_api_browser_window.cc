@@ -10,6 +10,7 @@
 #include "content/browser/web_contents/web_contents_impl.h"  // nogncheck
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
+#include "content/public/common/color_parser.h"
 #include "shell/browser/api/electron_api_web_contents_view.h"
 #include "shell/browser/browser.h"
 #include "shell/browser/native_browser_view.h"
@@ -23,6 +24,10 @@
 #include "shell/common/node_includes.h"
 #include "shell/common/options_switches.h"
 #include "ui/gl/gpu_switching_manager.h"
+
+#if defined(TOOLKIT_VIEWS)
+#include "shell/browser/native_window_views.h"
+#endif
 
 namespace electron {
 
@@ -466,6 +471,35 @@ v8::Local<v8::Value> BrowserWindow::GetWebContents(v8::Isolate* isolate) {
   return v8::Local<v8::Value>::New(isolate, web_contents_);
 }
 
+#if BUILDFLAG(IS_WIN)
+void BrowserWindow::SetTitleBarOverlayBackgroundColor(
+    const std::string& color_str) {
+  SkColor color;
+  bool success = content::ParseCssColorString(color_str, &color);
+  DCHECK(success);
+
+  static_cast<NativeWindowViews*>(window_.get())
+      ->set_overlay_button_color(color);
+  // todo: repaint
+}
+
+void BrowserWindow::SetTitleBarOverlaySymbolColor(
+    const std::string& color_str) {
+  SkColor color;
+  bool success = content::ParseCssColorString(color_str, &color);
+  DCHECK(success);
+
+  static_cast<NativeWindowViews*>(window_.get())
+      ->set_overlay_symbol_color(color);
+  // todo: repaint
+}
+
+void BrowserWindow::SetTitleBarOverlayHeight(int height) {
+  window_->set_titlebar_overlay_height(height);
+  window_->widget()->non_client_view()->Layout();
+}
+#endif
+
 void BrowserWindow::ScheduleUnresponsiveEvent(int ms) {
   if (!window_unresponsive_closure_.IsCancelled())
     return;
@@ -524,6 +558,14 @@ void BrowserWindow::BuildPrototype(v8::Isolate* isolate,
       .SetMethod("focusOnWebView", &BrowserWindow::FocusOnWebView)
       .SetMethod("blurWebView", &BrowserWindow::BlurWebView)
       .SetMethod("isWebViewFocused", &BrowserWindow::IsWebViewFocused)
+#if BUILDFLAG(IS_WIN)
+      .SetMethod("setTitleBarOverlayBackgroundColor",
+                 &BrowserWindow::SetTitleBarOverlayBackgroundColor)
+      .SetMethod("setTitleBarOverlaySymbolColor",
+                 &BrowserWindow::SetTitleBarOverlaySymbolColor)
+      .SetMethod("setTitleBarOverlayHeight",
+                 &BrowserWindow::SetTitleBarOverlayHeight)
+#endif
       .SetProperty("webContents", &BrowserWindow::GetWebContents);
 }
 

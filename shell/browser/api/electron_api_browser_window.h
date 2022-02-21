@@ -99,6 +99,11 @@ class BrowserWindow : public BaseWindow,
   void BlurWebView();
   bool IsWebViewFocused();
   v8::Local<v8::Value> GetWebContents(v8::Isolate* isolate);
+#if BUILDFLAG(IS_WIN)
+  void SetTitleBarOverlayBackgroundColor(const std::string& color);
+  void SetTitleBarOverlaySymbolColor(const std::string& color);
+  void SetTitleBarOverlayHeight(int height);
+#endif
 
  private:
 #if BUILDFLAG(IS_MAC)
