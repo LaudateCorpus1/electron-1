@@ -21,8 +21,8 @@
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/platform_util.h"
-#include "chrome/browser/ui/browser_dialogs.h"
 #include "chrome/common/pref_names.h"
+#include "chrome/grit/generated_resources.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -32,7 +32,6 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
-#include "electron/grit/electron_resources.h"
 #include "net/base/filename_util.h"
 #include "net/base/mime_util.h"
 #include "shell/browser/api/electron_api_web_contents.h"
@@ -165,10 +164,7 @@ void FileSelectHelper::OnListFile(
 void FileSelectHelper::LaunchConfirmationDialog(
     const base::FilePath& path,
     std::vector<ui::SelectedFileInfo> selected_files) {
-  ShowFolderUploadConfirmationDialog(
-      path,
-      base::BindOnce(&FileSelectHelper::ConvertToFileChooserFileInfoList, this),
-      std::move(selected_files), web_contents_);
+  ConvertToFileChooserFileInfoList(std::move(selected_files));
 }
 
 void FileSelectHelper::OnListDone(int error) {

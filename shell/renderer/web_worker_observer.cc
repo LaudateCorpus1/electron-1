@@ -37,8 +37,13 @@ WebWorkerObserver::WebWorkerObserver()
 
 WebWorkerObserver::~WebWorkerObserver() {
   lazy_tls.Pointer()->Set(nullptr);
-  gin_helper::MicrotasksScope microtasks_scope(
-      node_bindings_->uv_env()->isolate());
+  // Destroying the node environment will also run the uv loop,
+  // Node.js expects `kExplicit` microtasks policy and will run microtasks
+  // checkpoints after every call into JavaScript. Since we use a different
+  // policy in the renderer - switch to `kExplicit`
+  v8::Isolate* isolate = node_bindings_->uv_env()->isolate();
+  DCHECK_EQ(v8::MicrotasksScope::GetCurrentDepth(isolate), 0);
+  isolate->SetMicrotasksPolicy(v8::MicrotasksPolicy::kExplicit);
   node::FreeEnvironment(node_bindings_->uv_env());
   node::FreeIsolateData(node_bindings_->isolate_data());
 }
@@ -51,7 +56,7 @@ void WebWorkerObserver::WorkerScriptReadyForEvaluation(
       isolate, v8::MicrotasksScope::kDoNotRunMicrotasks);
 
   // Start the embed thread.
-  node_bindings_->PrepareMessageLoop();
+  node_bindings_->PrepareEmbedThread();
 
   // Setup node tracing controller.
   if (!node::tracing::TraceEventHelper::GetAgent())
@@ -73,7 +78,7 @@ void WebWorkerObserver::WorkerScriptReadyForEvaluation(
   node_bindings_->set_uv_env(env);
 
   // Give the node loop a run to make sure everything is ready.
-  node_bindings_->RunMessageLoop();
+  node_bindings_->StartPolling();
 }
 
 void WebWorkerObserver::ContextWillDestroy(v8::Local<v8::Context> context) {

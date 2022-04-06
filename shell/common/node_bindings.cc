@@ -322,6 +322,9 @@ NodeBindings::NodeBindings(BrowserEnvironment browser_env)
   } else {
     uv_loop_ = uv_default_loop();
   }
+
+  // Interrupt embed polling when a handle is started.
+  uv_loop_configure(uv_loop_, UV_LOOP_INTERRUPT_ON_IO_CHANGE);
 }
 
 NodeBindings::~NodeBindings() {
@@ -365,7 +368,6 @@ bool NodeBindings::IsInitialized() {
 void NodeBindings::Initialize() {
   TRACE_EVENT0("electron", "NodeBindings::Initialize");
   // Open node's error reporting system for browser process.
-  node::g_upstream_node_mode = false;
 
 #if BUILDFLAG(IS_LINUX)
   // Get real command line in renderer process forked by zygote.
@@ -381,14 +383,17 @@ void NodeBindings::Initialize() {
 
   auto env = base::Environment::Create();
   SetNodeOptions(env.get());
-  node::Environment::should_read_node_options_from_env_ =
-      fuses::IsNodeOptionsEnabled();
 
   std::vector<std::string> argv = {"electron"};
   std::vector<std::string> exec_argv;
   std::vector<std::string> errors;
+  uint64_t process_flags = node::ProcessFlags::kEnableStdioInheritance;
+  if (!fuses::IsNodeOptionsEnabled())
+    process_flags |= node::ProcessFlags::kDisableNodeOptionsEnv;
 
-  int exit_code = node::InitializeNodeWithArgs(&argv, &exec_argv, &errors);
+  int exit_code = node::InitializeNodeWithArgs(
+      &argv, &exec_argv, &errors,
+      static_cast<node::ProcessFlags::Flags>(process_flags));
 
   for (const std::string& error : errors)
     fprintf(stderr, "%s: %s\n", argv[0].c_str(), error.c_str());
@@ -462,7 +467,8 @@ node::Environment* NodeBindings::CreateEnvironment(
 
   args.insert(args.begin() + 1, init_script);
 
-  isolate_data_ = node::CreateIsolateData(isolate, uv_loop_, platform);
+  if (!isolate_data_)
+    isolate_data_ = node::CreateIsolateData(isolate, uv_loop_, platform);
 
   node::Environment* env;
   uint64_t flags = node::EnvironmentFlags::kDefaultFlags |
@@ -475,6 +481,12 @@ node::Environment* NodeBindings::CreateEnvironment(
     // not to register its handler (overriding blinks) in non-browser processes.
     flags |= node::EnvironmentFlags::kNoRegisterESMLoader |
              node::EnvironmentFlags::kNoInitializeInspector;
+  }
+
+  if (!electron::fuses::IsNodeCliInspectEnabled()) {
+    // If --inspect and friends are disabled we also shouldn't listen for
+    // SIGUSR1
+    flags |= node::EnvironmentFlags::kNoStartDebugSignalHandler;
   }
 
   v8::TryCatch try_catch(isolate);
@@ -572,16 +584,15 @@ void NodeBindings::LoadEnvironment(node::Environment* env) {
   gin_helper::EmitEvent(env->isolate(), env->process_object(), "loaded");
 }
 
-void NodeBindings::PrepareMessageLoop() {
-#if !BUILDFLAG(IS_WIN)
-  int handle = uv_backend_fd(uv_loop_);
-
-  // If the backend fd hasn't changed, don't proceed.
-  if (handle == handle_)
+void NodeBindings::PrepareEmbedThread() {
+  // IOCP does not change for the process until the loop is recreated,
+  // we ensure that there is only a single polling thread satisfying
+  // the concurrency limit set from CreateIoCompletionPort call by
+  // uv_loop_init for the lifetime of this process.
+  // More background can be found at:
+  // https://github.com/microsoft/vscode/issues/142786#issuecomment-1061673400
+  if (initialized_)
     return;
-
-  handle_ = handle;
-#endif
 
   // Add dummy handle for libuv, otherwise libuv would quit when there is
   // nothing to do.
@@ -592,7 +603,15 @@ void NodeBindings::PrepareMessageLoop() {
   uv_thread_create(&embed_thread_, EmbedThreadRunner, this);
 }
 
-void NodeBindings::RunMessageLoop() {
+void NodeBindings::StartPolling() {
+  // Avoid calling UvRunOnce if the loop is already active,
+  // otherwise it can lead to situations were the number of active
+  // threads processing on IOCP is greater than the concurrency limit.
+  if (initialized_)
+    return;
+
+  initialized_ = true;
+
   // The MessageLoop should have been created, remember the one in main thread.
   task_runner_ = base::ThreadTaskRunnerHandle::Get();
 

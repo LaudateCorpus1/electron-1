@@ -606,6 +606,10 @@ You should seek to use the `steal` option as sparingly as possible.
 
 Hides all application windows without minimizing them.
 
+### `app.isHidden()` _macOS_
+
+Returns `boolean` - `true` if the application—including all of its windows—is hidden (e.g. with `Command-H`), `false` otherwise.
+
 ### `app.show()` _macOS_
 
 Shows application windows after they were hidden. Does not automatically focus
@@ -633,7 +637,6 @@ Returns `string` - The current application directory.
     * `~/Library/Application Support` on macOS
   * `userData` The directory for storing your app's configuration files, which by
     default it is the `appData` directory appended with your app's name.
-  * `cache`
   * `temp` Temporary directory.
   * `exe` The current executable file.
   * `module` The `libchromiumcontent` library.
@@ -714,7 +717,7 @@ Overrides the current application's name.
 ### `app.getLocale()`
 
 Returns `string` - The current application locale, fetched using Chromium's `l10n_util` library.
-Possible return values are documented [here](https://source.chromium.org/chromium/chromium/src/+/master:ui/base/l10n/l10n_util.cc).
+Possible return values are documented [here](https://source.chromium.org/chromium/chromium/src/+/main:ui/base/l10n/l10n_util.cc).
 
 To set the locale, you'll want to use a command line switch at app startup, which may be found [here](command-line-switches.md).
 
@@ -1093,7 +1096,7 @@ Activation policy types:
 
 Imports the certificate in pkcs12 format into the platform certificate store.
 `callback` is called with the `result` of import operation, a value of `0`
-indicates success while any other value indicates failure according to Chromium [net_error_list](https://source.chromium.org/chromium/chromium/src/+/master:net/base/net_error_list.h).
+indicates success while any other value indicates failure according to Chromium [net_error_list](https://source.chromium.org/chromium/chromium/src/+/main:net/base/net_error_list.h).
 
 ### `app.configureHostResolver(options)`
 

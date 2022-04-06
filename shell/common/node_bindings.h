@@ -92,12 +92,16 @@ class NodeBindings {
   // Load node.js in the environment.
   void LoadEnvironment(node::Environment* env);
 
-  // Prepare for message loop integration.
-  void PrepareMessageLoop();
+  // Prepare embed thread for message loop integration.
+  void PrepareEmbedThread();
 
-  // Do message loop integration.
-  virtual void RunMessageLoop();
+  // Notify embed thread to start polling after environment is loaded.
+  void StartPolling();
 
+  // Gets/sets the per isolate data.
+  void set_isolate_data(node::IsolateData* isolate_data) {
+    isolate_data_ = isolate_data;
+  }
   node::IsolateData* isolate_data() const { return isolate_data_; }
 
   // Gets/sets the environment to wrap uv loop.
@@ -140,6 +144,9 @@ class NodeBindings {
   // Thread to poll uv events.
   static void EmbedThreadRunner(void* arg);
 
+  // Indicates whether polling thread has been created.
+  bool initialized_ = false;
+
   // Whether the libuv loop has ended.
   bool embed_closed_ = false;
 
@@ -160,10 +167,6 @@ class NodeBindings {
 
   // Isolate data used in creating the environment
   node::IsolateData* isolate_data_ = nullptr;
-
-#if !BUILDFLAG(IS_WIN)
-  int handle_ = -1;
-#endif
 
   base::WeakPtrFactory<NodeBindings> weak_factory_{this};
 };
