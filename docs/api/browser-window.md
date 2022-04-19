@@ -4,6 +4,9 @@
 
 Process: [Main](../glossary.md#main-process)
 
+This module cannot be used until the `ready` event of the `app`
+module is emitted.
+
 ```javascript
 // In the main process.
 const { BrowserWindow } = require('electron')
@@ -473,7 +476,7 @@ window.onbeforeunload = (e) => {
   // a non-void value will silently cancel the close.
   // It is recommended to use the dialog API to let the user confirm closing the
   // application.
-  e.returnValue = false // equivalent to `return false` but not recommended
+  e.returnValue = false
 }
 ```
 

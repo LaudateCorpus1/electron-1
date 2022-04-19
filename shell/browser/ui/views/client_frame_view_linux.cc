@@ -22,7 +22,7 @@
 #include "ui/gfx/skia_util.h"
 #include "ui/gfx/text_constants.h"
 #include "ui/gtk/gtk_compat.h"  // nogncheck
-#include "ui/gtk/gtk_util.h"
+#include "ui/gtk/gtk_util.h"    // nogncheck
 #include "ui/native_theme/native_theme.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/controls/button/image_button.h"
@@ -178,7 +178,8 @@ gfx::Rect ClientFrameViewLinux::GetBoundsForClientView() const {
   gfx::Rect client_bounds = bounds();
   if (!frame_->IsFullscreen()) {
     client_bounds.Inset(GetBorderDecorationInsets());
-    client_bounds.Inset(0, GetTitlebarBounds().height(), 0, 0);
+    client_bounds.Inset(
+        gfx::Insets::TLBR(0, GetTitlebarBounds().height(), 0, 0));
   }
   return client_bounds;
 }
