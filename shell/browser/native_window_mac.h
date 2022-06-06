@@ -167,6 +167,7 @@ class NativeWindowMac : public NativeWindow,
   void UpdateVibrancyRadii(bool fullscreen);
 
   // Set the attribute of NSWindow while work around a bug of zoom button.
+  bool HasStyleMask(NSUInteger flag) const;
   void SetStyleMask(bool on, NSUInteger flag);
   void SetCollectionBehavior(bool on, NSUInteger flag);
   void SetWindowLevel(int level);
@@ -176,6 +177,10 @@ class NativeWindowMac : public NativeWindow,
   // Handle fullscreen transitions.
   void SetFullScreenTransitionState(FullScreenTransitionState state);
   void HandlePendingFullscreenTransitions();
+  bool HandleDeferredClose();
+  void SetHasDeferredWindowClose(bool defer_close) {
+    has_deferred_window_close_ = defer_close;
+  }
 
   enum class VisualEffectState {
     kFollowWindow,
@@ -248,6 +253,12 @@ class NativeWindowMac : public NativeWindow,
   }
   FullScreenTransitionState fullscreen_transition_state_ =
       FullScreenTransitionState::NONE;
+
+  // Trying to close an NSWindow during a fullscreen transition will cause the
+  // window to lock up. Use this to track if CloseWindow was called during a
+  // fullscreen transition, to defer the -[NSWindow close] call until the
+  // transition is complete.
+  bool has_deferred_window_close_ = false;
 
   NSInteger attention_request_id_ = 0;  // identifier from requestUserAttention
 
