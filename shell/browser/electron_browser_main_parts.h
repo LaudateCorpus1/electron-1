@@ -16,6 +16,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/device/public/mojom/geolocation_control.mojom.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
+#include "ui/display/screen.h"
 #include "ui/views/layout/layout_provider.h"
 
 class BrowserProcessImpl;
@@ -37,6 +38,10 @@ class Screen;
 
 namespace device {
 class GeolocationManager;
+}
+
+namespace ui {
+class LinuxUiGetter;
 }
 
 namespace electron {
@@ -121,10 +126,15 @@ class ElectronBrowserMainParts : public content::BrowserMainParts {
       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner);
 #endif
 
+#if BUILDFLAG(IS_LINUX)
+  void DetectOzonePlatform();
+#endif
+
 #if BUILDFLAG(IS_MAC)
   void FreeAppDelegate();
   void RegisterURLHandler();
   void InitializeMainNib();
+  static std::string GetCurrentSystemLocale();
 #endif
 
 #if BUILDFLAG(IS_MAC)
@@ -141,6 +151,8 @@ class ElectronBrowserMainParts : public content::BrowserMainParts {
 #if BUILDFLAG(IS_LINUX)
   // Used to notify the native theme of changes to dark mode.
   std::unique_ptr<DarkThemeObserver> dark_theme_observer_;
+
+  std::unique_ptr<ui::LinuxUiGetter> linux_ui_getter_;
 #endif
 
   std::unique_ptr<views::LayoutProvider> layout_provider_;
@@ -169,6 +181,7 @@ class ElectronBrowserMainParts : public content::BrowserMainParts {
 
 #if BUILDFLAG(IS_MAC)
   std::unique_ptr<device::GeolocationManager> geolocation_manager_;
+  std::unique_ptr<display::ScopedNativeScreen> screen_;
 #endif
 
   static ElectronBrowserMainParts* self_;

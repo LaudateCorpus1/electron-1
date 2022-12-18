@@ -15,9 +15,7 @@
 - (void)redispatchKeyEvent:(NSEvent*)event;
 @end
 
-namespace electron {
-
-namespace api {
+namespace electron::api {
 
 bool WebContents::IsFocused() const {
   auto* view = web_contents()->GetRenderWidgetHostView();
@@ -64,7 +62,7 @@ bool WebContents::PlatformHandleKeyboardEvent(
     [event.os_event.window redispatchKeyEvent:event.os_event];
     // FIXME(nornagon): this isn't the right return value; we should implement
     // devtools windows as Widgets in order to take advantage of the
-    // pre-existing redispatch code in bridged_native_widget.
+    // preexisting redispatch code in bridged_native_widget.
     return false;
   } else if (event.os_event.window &&
              [event.os_event.window
@@ -81,6 +79,4 @@ bool WebContents::PlatformHandleKeyboardEvent(
   return false;
 }
 
-}  // namespace api
-
-}  // namespace electron
+}  // namespace electron::api
